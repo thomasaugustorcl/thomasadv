@@ -1,0 +1,127 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: leads
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required)
+    //   - phone: string (required)
+    //   - createdAt: timestamp (required)
+    //   - status: string (required, 'new', 'contacted', 'archived')
+    //
+    // Collection: posts
+    // Document ID: auto-generated
+    // Fields:
+    //   - title: string (required)
+    //   - excerpt: string (required)
+    //   - content: string (required)
+    //   - image: string (optional)
+    //   - date: string (required)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: stats
+    // Document ID: 'page_views'
+    // Fields:
+    //   - views: number (required)
+    //   - lastUpdated: timestamp (required)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      // In a real app, we'd check a users collection or custom claims.
+      // Here, we just check if they are authenticated since it's a personal dashboard.
+      return isAuthenticated();
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // Domain Validators
+    function isValidLead(data) {
+      let allowed = ['name', 'phone', 'createdAt', 'status', 'diagnosticResult', 'answers', 'source'];
+      return data.keys().hasAll(['name', 'phone', 'createdAt', 'status']) &&
+             data.keys().hasOnly(allowed) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.phone is string && data.phone.size() > 0 && data.phone.size() < 20 &&
+             data.createdAt is timestamp &&
+             data.status in ['new', 'contacted', 'archived', 'negotiating', 'signed'] &&
+             (!('diagnosticResult' in data) || data.diagnosticResult is string) &&
+             (!('answers' in data) || data.answers is map) &&
+             (!('source' in data) || data.source is string);
+    }
+
+    function isValidDiagnosticLead(data) {
+      return hasOnlyAllowedFields(['name', 'phone', 'diagnosticResult', 'answers', 'createdAt', 'status']) &&
+             data.name is string && data.name.size() > 0 &&
+             data.phone is string && data.phone.size() > 0 &&
+             data.diagnosticResult is string &&
+             data.answers is map &&
+             data.createdAt is timestamp &&
+             data.status is string;
+    }
+
+    function isValidPost(data) {
+      return hasOnlyAllowedFields(['title', 'excerpt', 'content', 'image', 'date', 'createdAt', 'slug']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.excerpt is string && data.excerpt.size() > 0 && data.excerpt.size() < 500 &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 100000 &&
+             (data.image == null || (data.image is string && data.image.size() < 1000)) &&
+             data.date is string && data.date.size() > 0 && data.date.size() < 50 &&
+             (data.slug == null || data.slug is string) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidStatUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'lastUpdated']) &&
+             request.resource.data.views == resource.data.views + 1 &&
+             request.resource.data.lastUpdated is timestamp;
+    }
+
+    // Rules
+    match /leads/{leadId} {
+      allow create: if isValidLead(request.resource.data);
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /diagnostic_leads/{leadId} {
+      allow create: if isValidDiagnosticLead(request.resource.data);
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /posts/{postId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidPost(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /stats/{statId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['views', 'lastUpdated']) && 
+                       request.resource.data.views == 1 && 
+                       request.resource.data.lastUpdated is timestamp;
+      allow update: if isValidStatUpdate() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /content/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "entities": {
+    "Lead": {
+      "title": "Lead",
+      "description": "A potential client who filled out the contact form.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the lead."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The WhatsApp number of the lead."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the lead was created."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["new", "contacted", "archived"],
+          "description": "The status of the lead."
+        }
+      },
+      "required": ["name", "phone", "createdAt", "status"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "A blog post.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "excerpt": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "image": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["title", "excerpt", "content", "date", "createdAt"]
+    },
+    "Stat": {
+      "title": "Stat",
+      "description": "Page view statistics.",
+      "type": "object",
+      "properties": {
+        "views": {
+          "type": "number"
+        },
+        "lastUpdated": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["views", "lastUpdated"]
+    },
+    "DiagnosticLead": {
+      "title": "DiagnosticLead",
+      "description": "A lead captured via the diagnostic tool.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "diagnosticResult": {
+          "type": "string"
+        },
+        "answers": {
+          "type": "object"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": ["name", "phone", "diagnosticResult", "answers", "createdAt", "status"]
+    }
+  },
+  "firestore": {
+    "/leads/{leadId}": {
+      "schema": {
+        "$ref": "#/entities/Lead"
+      },
+      "description": "Collection of leads."
+    },
+    "/diagnostic_leads/{leadId}": {
+      "schema": {
+        "$ref": "#/entities/DiagnosticLead"
+      },
+      "description": "Collection of diagnostic leads."
+    },
+    "/posts/{postId}": {
+      "schema": {
+        "$ref": "#/entities/Post"
+      },
+      "description": "Collection of blog posts."
+    },
+    "/stats/{statId}": {
+      "schema": {
+        "$ref": "#/entities/Stat"
+      },
+      "description": "Collection of statistics."
+    }
+  }
+}
